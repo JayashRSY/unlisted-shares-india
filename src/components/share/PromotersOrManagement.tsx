@@ -18,11 +18,18 @@ const PromotersOrManagement = () => {
         console.error("Error fetching FAQ data:", error);
       }
     };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const intervalId = setInterval(() => {
-      fetchData();
-    }, 5000);
+   
     fetchData();
+    const eventSource = new EventSource("/api/sse");
+    eventSource.onmessage = (event) => {
+      const sseRes = JSON.parse(event.data);
+      console.log("New Event:", sseRes);
+      if (sseRes?.message === "New file uploaded") {
+        fetchData();
+      }
+    };
+
+    return () => eventSource.close();
   }, []);
 
   return (

@@ -31,19 +31,23 @@ const Financials = () => {
       }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const intervalId = setInterval(() => {
-      fetchData("income_statements");
-      fetchData("balance_sheet");
-      fetchData("cash_flow");
-    }, 5000); // Polling every 5 seconds
-
-    // Initial fetch
     fetchData("income_statements");
     fetchData("balance_sheet");
     fetchData("cash_flow");
 
-    // return () => clearInterval(intervalId); // Cleanup on unmount
+    const eventSource = new EventSource("/api/sse");
+    eventSource.onmessage = (event) => {
+      const sseRes = JSON.parse(event.data);
+      console.log("New Event:", sseRes);
+      if (sseRes?.message === "New file uploaded") {
+        fetchData("income_statements");
+        fetchData("balance_sheet");
+        fetchData("cash_flow");
+      }
+    };
+
+    return () => eventSource.close();
+
   }, []);
 
   return (

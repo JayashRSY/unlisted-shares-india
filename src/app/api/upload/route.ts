@@ -1,6 +1,9 @@
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { EventEmitter } from 'events';
+
+export const eventEmitter = new EventEmitter();
 
 export async function POST(req: Request) {
     try {
@@ -21,6 +24,10 @@ export async function POST(req: Request) {
             const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
             await insertIntoSheet(jsonData, sheetName); // Pass sheetName to the function
         }
+
+        // Emit an event to notify SSE about the new upload
+        eventEmitter.emit('fileUploaded', { message: 'New file uploaded' });
+
         return NextResponse.json({ status: "success", data: 'Data Updated successfully' });
     } catch (e: unknown) {
         console.error("Error processing file:", e as Error);
@@ -51,12 +58,10 @@ async function insertIntoSheet(data: any[], sheetName: string) {
 
         // Maintain the order of columns based on the first row of the data
         const columnOrder = sortByPrecedence(Object.keys(data[0]), precedenceList); // Assuming the first row defines the order
-        console.log("🚀 ~ insertIntoSheet ~ columnOrder:", columnOrder);
         const values = [columnOrder]; // Add headers in the specified order
         data.forEach((row) => {
             values.push(columnOrder.map((key: string) => row[key])); // Maintain order
         });
-        console.log("🚀 ~ insertIntoSheet ~ values:", values);
         const spreadsheetId = process.env.NEXT_PUBLIC_SHEET_ID;
         const range = `${sheetName}!A1`; // Use the sheetName for the range
         await sheets.spreadsheets.values.clear({
